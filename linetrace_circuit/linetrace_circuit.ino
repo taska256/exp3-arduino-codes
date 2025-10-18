@@ -12,7 +12,7 @@ const int MOTOR_R_DIR2 = 5;
 
 void setup()
 {
-    Serial.begin(9600);
+    // Serial.begin(115200);
 
     pinMode(MOTOR_L_PWM, OUTPUT);
     pinMode(MOTOR_L_DIR1, OUTPUT);
