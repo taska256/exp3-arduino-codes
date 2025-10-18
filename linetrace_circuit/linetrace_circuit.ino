@@ -24,33 +24,29 @@ void setup()
     Serial.println("------------Start-------------");
 }
 
-float p = 0; // マイナスなら左,プラスなら右に寄っている
-float i = 0;
+float p = 0; // マイナスなら左,プラスなら右に機体の頭が寄っている
+float i = 0; // loop一回にかかる時間によるが、すぐに1000に飽和する可能性あり その場合はpと変わらず積分の意味がないため修正の必要あり
 float d = 0;
 
 float prevError = 0;
 
-/* 方針
-    全てのセンサ(rawL,rawC,rawR)は黒(1023)になり続けることを目標とする
-*/
-
 int calcPowerL()
 {
-    // p:[-2~2]
-    // i:[-1000~1000]
-    // d:[-4~4]
-    const float Kp = 30;   // Kp*p: [-60~60]
-    const float Ki = 0.05; // Ki*i: [-50~50]
-    const float Kd = -5;   // Kd*d: [-20~20]
+    // p:[-2~2] almost [-1~1]
+    // i:[-1000~1000] almost 0
+    // d:[-2~2] almost [-1~1]
+    const float Kp = 60;   // Kp*p: [-120~120] almost [-60~60]
+    const float Ki = 0.05; // Ki*i: [-50~50] almost 0
+    const float Kd = -50;  // Kd*d: [-100~100] almost [-50~50]
 
     return 255 - Kp * p - Ki * i - Kd * d;
 }
 
 int calcPowerR()
 {
-    const float Kp = 12;
+    const float Kp = 60;
     const float Ki = 0.05;
-    const float Kd = -5;
+    const float Kd = -50;
 
     return 255 + Kp * p + Ki * i + Kd * d;
 }
@@ -69,8 +65,12 @@ void updatePID(float error)
 
 float calcError(float rawL, float rawC, float rawR)
 {
+    // 範囲 -2~2
+    //  全てのセンサ(rawL,rawC,rawR)は黒(1023)になり続けることを目標とする
+
     // 中央センサがライン外の場合は補正を強化
     return (rawL - rawR) * (2.0 - rawC / 1024.0) / 1024.0;
+    // idea: L,Rは白でCだけ黒を目指し、L,Rは黒線から少し離すようにすると振動は無くなりそう？
 }
 
 void printSensorLog(int rawL, int rawC, int rawR)
@@ -111,7 +111,7 @@ void readSensor()
     int rawC = analogRead(SENSOR_C);
     int rawR = analogRead(SENSOR_R);
 
-    printSensorLog(rawL, rawC, rawR);
+    // printSensorLog(rawL, rawC, rawR);
 
     updatePID(calcError(rawL, rawC, rawR));
 }
@@ -130,7 +130,9 @@ void setMotor(int speedL, int speedR)
 
 void loop()
 {
-    // delay(50);
+    /*0.3秒で約1000回転すると、0.3秒で大体積分項が1000に飽和する
+    この行をつけた場合とつけていない場合で積分項が強く働く波部分のライン走行に違いが出るか確認する*/
+    // delayMicroseconds(256);
 
     readSensor();
 
