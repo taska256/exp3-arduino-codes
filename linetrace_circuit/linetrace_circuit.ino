@@ -13,6 +13,7 @@ const int MOTOR_R_DIR2 = 5;
 void setup()
 {
     // Serial.begin(115200);
+    // Serial.println("------------Start-------------");
 
     pinMode(MOTOR_L_PWM, OUTPUT);
     pinMode(MOTOR_L_DIR1, OUTPUT);
@@ -20,8 +21,6 @@ void setup()
     pinMode(MOTOR_R_PWM, OUTPUT);
     pinMode(MOTOR_R_DIR1, OUTPUT);
     pinMode(MOTOR_R_DIR2, OUTPUT);
-
-    Serial.println("------------Start-------------");
 }
 
 float p = 0; // マイナスなら左,プラスなら右に機体の頭が寄っている
