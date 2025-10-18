@@ -43,7 +43,7 @@ int calcPowerL()
     const float Ki = 0.05; // Ki*i: [-50~50]
     const float Kd = -5;   // Kd*d: [-20~20]
 
-    return 150 - Kp * p - Ki * i - Kd * d;
+    return 255 - Kp * p - Ki * i - Kd * d;
 }
 
 int calcPowerR()
@@ -52,7 +52,7 @@ int calcPowerR()
     const float Ki = 0.05;
     const float Kd = -5;
 
-    return 150 + Kp * p + Ki * i + Kd * d;
+    return 255 + Kp * p + Ki * i + Kd * d;
 }
 
 void updatePID(float error)
