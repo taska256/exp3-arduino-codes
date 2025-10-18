@@ -37,7 +37,7 @@ int calcPowerL()
     // d:[-2~2] almost [-1~1]
     const float Kp = 60;   // Kp*p: [-120~120] almost [-60~60]
     const float Ki = 0.05; // Ki*i: [-50~50] almost 0
-    const float Kd = -50;  // Kd*d: [-100~100] almost [-50~50]
+    const float Kd = -50;  // 負で振動抑制 Kd*d: [-100~100] almost [-50~50]
 
     return 255 - Kp * p - Ki * i - Kd * d;
 }
