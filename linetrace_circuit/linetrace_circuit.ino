@@ -12,8 +12,6 @@ const int MOTOR_R_DIR2 = 5;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("------------Start-------------");
 
     pinMode(MOTOR_L_PWM, OUTPUT);
     pinMode(MOTOR_L_DIR1, OUTPUT);
@@ -35,25 +33,21 @@ int calcPowerL()
     // i:[-1000~1000] almost 0
     // d:[-2~2] almost [-1~1]
     const float Kp = 60;  // Kp*p: [-120~120] almost [-60~60]
-    const float Ki = 0.1; // Ki*i: [-50~50] almost 0
+    const float Ki = 0.005; // Ki*i: [-50~50] almost 0
     const float Kd = -20; // 負で振動抑制 Kd*d: [-100~100] almost [-50~50]
-    float calced = Kp * p + Ki * i + Kd * d;
+    float calced = Kp * p +Ki*i+ Kd * d;
 
-    return (180 - calced);
-    // return 0.5*(255-Kp*p);
-    // return 200;
+    return (150 - calced);
 }
 
 int calcPowerR()
 {
     const float Kp = 60;
-    const float Ki = 0.1;
+    const float Ki = 0.005;
     const float Kd = -20;
-    float calced = Kp * p + Ki * i + Kd * d;
+    float calced = Kp * p+Ki*i + Kd * d;
 
-    return (180 + calced);
-    // return 0.5*(255+Kp*p);
-    // return 200;
+    return (150 + calced);
 }
 
 void updatePID(float error)
@@ -68,13 +62,34 @@ void updatePID(float error)
     prevError = error;
 }
 
+int isLeftNow=-1;
+
+//全て白の時にエラーが0になってしまう
 float calcError(float rawL, float rawC, float rawR)
 {
     // 範囲 -2~2
     //  全てのセンサ rawL,rawRは白 rawCは黒 -> 0
+    // 白の時低くなる
+    // 黒の時高くなる
 
-    // 中央センサがライン外の場合は補正を強化
-    return -((1024 - rawL) - (1024 - rawR)) * (2.0 - rawC / 1024.0) / 1024.0;
+    int threshold=500;
+    if(rawL<threshold&&rawC<threshold&&rawR<threshold){
+        return isLeftNow*2;
+    }
+
+    if(rawL<threshold&&rawC>threshold&&rawR<threshold){
+        i=0;
+    }
+
+
+    float val=-((1024 - rawL) - (1024 - rawR)) * (2.0 - rawC / 1024.0) / 1024.0;
+    if(val<0){
+        isLeftNow=-1;
+    }else{
+        isLeftNow=1;
+    }
+
+    return val;
 }
 
 void printSensorLog(int rawL, int rawC, int rawR)
@@ -113,7 +128,7 @@ void readSensor()
     int rawC = analogRead(SENSOR_C);
     int rawR = analogRead(SENSOR_R);
 
-    printSensorLog(rawL, rawC, rawR);
+    // printSensorLog(rawL, rawC, rawR);
 
     updatePID(calcError(rawL, rawC, rawR));
 }
