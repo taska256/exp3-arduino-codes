@@ -32,39 +32,40 @@ int calcPowerL()
     // p:[-2~2] almost [-1~1]
     // i:[-1000~1000] almost 0
     // d:[-2~2] almost [-1~1]
-    const float Kp = 60;  // Kp*p: [-120~120] almost [-60~60]
-    const float Ki = 0.005; // Ki*i: [-50~50] almost 0
-    const float Kd = -20; // 負で振動抑制 Kd*d: [-100~100] almost [-50~50]
-    float calced = Kp * p +Ki*i+ Kd * d;
+    const float Kp = 20;    // Kp*p: [-120~120] almost [-60~60]
+    const float Ki = 0.00005; // Ki*i: [-50~50] almost 0
+    const float Kd = -10;   // 負で振動抑制 Kd*d: [-100~100] almost [-50~50]
+    float calced = Kp * p + Ki * i + Kd * d;
 
-    return (150 - calced);
+    return (100 - 1.4*calced);
 }
 
 int calcPowerR()
 {
-    const float Kp = 60;
-    const float Ki = 0.005;
-    const float Kd = -20;
-    float calced = Kp * p+Ki*i + Kd * d;
+    const float Kp = 20;
+    const float Ki = 0.00005;
+    const float Kd = -10;
+    float calced = Kp * p + Ki * i + Kd * d;
 
-    return (150 + calced);
+    return (100 + 1.4*calced);
 }
 
 void updatePID(float error)
 {
     p = error;
     i += error;
-    d = error - prevError;
+    d = (error - prevError);
+    
 
-    const float I_MAX = 1000.0;
+    const float I_MAX = 10000.0;
 
     i = constrain(i, -I_MAX, I_MAX);
     prevError = error;
 }
 
-int isLeftNow=-1;
+int isLeftNow = -1;
 
-//全て白の時にエラーが0になってしまう
+// 全て白の時にエラーが0になってしまう
 float calcError(float rawL, float rawC, float rawR)
 {
     // 範囲 -2~2
@@ -72,21 +73,26 @@ float calcError(float rawL, float rawC, float rawR)
     // 白の時低くなる
     // 黒の時高くなる
 
-    int threshold=500;
-    if(rawL<threshold&&rawC<threshold&&rawR<threshold){
-        return isLeftNow*2;
+    int threshold = 500;
+    if (rawL < threshold && rawC < threshold && rawR < threshold)
+    {
+        return isLeftNow * 2;
     }
 
-    if(rawL<threshold&&rawC>threshold&&rawR<threshold){
-        i=0;
+    if (rawC > threshold)
+    {
+        i = 0;
     }
 
 
-    float val=-((1024 - rawL) - (1024 - rawR)) * (2.0 - rawC / 1024.0) / 1024.0;
-    if(val<0){
-        isLeftNow=-1;
-    }else{
-        isLeftNow=1;
+    float val = -((1024 - rawL) - (1024 - rawR)) * (2.0 - rawC / 1024.0) / 1024.0;
+    if (val < 0)
+    {
+        isLeftNow = -1;
+    }
+    else
+    {
+        isLeftNow = 1;
     }
 
     return val;
