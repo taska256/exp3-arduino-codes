@@ -12,8 +12,8 @@ const int MOTOR_R_DIR2 = 5;
 
 void setup()
 {
-    // Serial.begin(115200);
-    // Serial.println("------------Start-------------");
+    Serial.begin(9600);
+    Serial.println("------------Start-------------");
 
     pinMode(MOTOR_L_PWM, OUTPUT);
     pinMode(MOTOR_L_DIR1, OUTPUT);
@@ -79,17 +79,13 @@ void printSensorLog(int rawL, int rawC, int rawR)
 
     if (currentTime - lastPrintTime > 100)
     {
-        Serial.print("\n\n\n\n\n\n\n\n\n\n");
 
-        Serial.print("\n\nL:");
-        for (int i = 0; i < rawL * 10 / 1024; i++)
-            Serial.print("#");
-        Serial.print("\n\nM:");
-        for (int i = 0; i < rawC * 10 / 1024; i++)
-            Serial.print("#");
-        Serial.print("\n\nR:");
-        for (int i = 0; i < rawR * 10 / 1024; i++)
-            Serial.print("#");
+        Serial.print("L:");
+        Serial.println(rawL);
+        Serial.print("C:");
+        Serial.println(rawC);
+        Serial.print("R:");
+        Serial.println(rawR);
 
         Serial.println();
 
@@ -110,7 +106,7 @@ void readSensor()
     int rawC = analogRead(SENSOR_C);
     int rawR = analogRead(SENSOR_R);
 
-    // printSensorLog(rawL, rawC, rawR);
+    printSensorLog(rawL, rawC, rawR);
 
     updatePID(calcError(rawL, rawC, rawR));
 }
