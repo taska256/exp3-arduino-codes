@@ -34,20 +34,26 @@ int calcPowerL()
     // p:[-2~2] almost [-1~1]
     // i:[-1000~1000] almost 0
     // d:[-2~2] almost [-1~1]
-    const float Kp = 60;   // Kp*p: [-120~120] almost [-60~60]
-    const float Ki = 0.05; // Ki*i: [-50~50] almost 0
-    const float Kd = -50;  // 負で振動抑制 Kd*d: [-100~100] almost [-50~50]
+    const float Kp = 60;  // Kp*p: [-120~120] almost [-60~60]
+    const float Ki = 0.1; // Ki*i: [-50~50] almost 0
+    const float Kd = -20; // 負で振動抑制 Kd*d: [-100~100] almost [-50~50]
+    float calced = Kp * p + Ki * i + Kd * d;
 
-    return 255 - Kp * p - Ki * i - Kd * d;
+    return (180 - calced);
+    // return 0.5*(255-Kp*p);
+    // return 200;
 }
 
 int calcPowerR()
 {
     const float Kp = 60;
-    const float Ki = 0.05;
-    const float Kd = -50;
+    const float Ki = 0.1;
+    const float Kd = -20;
+    float calced = Kp * p + Ki * i + Kd * d;
 
-    return 255 + Kp * p + Ki * i + Kd * d;
+    return (180 + calced);
+    // return 0.5*(255+Kp*p);
+    // return 200;
 }
 
 void updatePID(float error)
@@ -65,11 +71,10 @@ void updatePID(float error)
 float calcError(float rawL, float rawC, float rawR)
 {
     // 範囲 -2~2
-    //  全てのセンサ(rawL,rawC,rawR)は黒(1023)になり続けることを目標とする
+    //  全てのセンサ rawL,rawRは白 rawCは黒 -> 0
 
     // 中央センサがライン外の場合は補正を強化
-    return (rawL - rawR) * (2.0 - rawC / 1024.0) / 1024.0;
-    // idea: L,Rは白でCだけ黒を目指し、L,Rは黒線から少し離すようにすると振動は無くなりそう？
+    return -((1024 - rawL) - (1024 - rawR)) * (2.0 - rawC / 1024.0) / 1024.0;
 }
 
 void printSensorLog(int rawL, int rawC, int rawR)
@@ -81,20 +86,22 @@ void printSensorLog(int rawL, int rawC, int rawR)
     {
 
         Serial.print("L:");
-        Serial.println(rawL);
+        Serial.print(rawL);
+        Serial.print(" ");
         Serial.print("C:");
-        Serial.println(rawC);
+        Serial.print(rawC);
+        Serial.print(" ");
         Serial.print("R:");
         Serial.println(rawR);
 
-        Serial.println();
+        // Serial.println();
 
-        Serial.print("P:");
-        Serial.println(p);
-        Serial.print(" I:");
-        Serial.println(i);
-        Serial.print(" D:");
-        Serial.println(d);
+        // Serial.print("P:");
+        // Serial.println(p);
+        // Serial.print(" I:");
+        // Serial.println(i);
+        // Serial.print(" D:");
+        // Serial.println(d);
 
         lastPrintTime = currentTime;
     }
