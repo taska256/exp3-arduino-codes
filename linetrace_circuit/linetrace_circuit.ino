@@ -31,6 +31,22 @@ double prevError = 0;
 const long SENSOR_THRESHOLD = 500;
 bool resetIntegral = false;
 
+// 追加: 速度プロファイル関連
+double basePower = 100;         // 現在のベース速度
+double basePowerFiltered = 100; // スムージング後のベース速度
+
+const int BASE_STRAIGHT = 170; // 直線
+const int BASE_CURVE = 130;    // カーブ
+const int BASE_ZIGZAG = 90;    // グネグネ
+
+const double P_STRAIGHT_THR = 0.15; // 直線判定のpしきい値
+const double D_STRAIGHT_THR = 0.10; // 直線判定のdしきい値
+
+const unsigned long ZIGZAG_WINDOW = 300; // ms 内の反転回数でジグザグ判定
+int prevSignP = 0;
+int zigzagFlipCount = 0;
+unsigned long zigzagWindowStart = 0;
+
 long calcPowerL()
 {
     const double Kp = 30;
@@ -38,7 +54,7 @@ long calcPowerL()
     const double Kd = -20;
     double calced = Kp * p + Ki * i + Kd * d;
 
-    return 100 - calced;
+    return basePower - calced;
 }
 
 long calcPowerR()
@@ -48,7 +64,71 @@ long calcPowerR()
     const double Kd = -20;
     double calced = Kp * p + Ki * i + Kd * d;
 
-    return 100 + calced;
+    return basePower + calced;
+}
+void updateSpeedProfile(long rawL, long rawC, long rawR)
+{
+    // ウィンドウ管理（一定時間ごとに反転カウントをリセット）
+    unsigned long now = millis();
+    if (now - zigzagWindowStart > ZIGZAG_WINDOW)
+    {
+        zigzagWindowStart = now;
+        zigzagFlipCount = 0;
+    }
+
+    // p の符号反転検出（デッドバンド付き）
+    int signP = 0;
+    if (p > P_STRAIGHT_THR)
+        signP = 1;
+    if (p < -P_STRAIGHT_THR)
+        signP = -1;
+    if (signP != 0 && prevSignP != 0 && signP != prevSignP)
+    {
+        zigzagFlipCount++;
+    }
+    prevSignP = signP;
+
+    bool lineLost = (rawL < SENSOR_THRESHOLD && rawC < SENSOR_THRESHOLD && rawR < SENSOR_THRESHOLD);
+    bool centerOnLine = (rawC > SENSOR_THRESHOLD);
+
+    double curvature = fabs(p) + 0.4 * fabs(d); // 連続的な曲率指標（必要なら未使用でもOK）
+    bool isZigzag = (zigzagFlipCount >= 3);
+    bool isStraight = centerOnLine && fabs(p) < P_STRAIGHT_THR && fabs(d) < D_STRAIGHT_THR;
+
+    int targetBase;
+    if (lineLost)
+        targetBase = BASE_ZIGZAG; // 迷子時は安全に
+    else if (isZigzag)
+        targetBase = BASE_ZIGZAG;
+    else if (isStraight)
+        targetBase = BASE_STRAIGHT;
+    else
+        targetBase = BASE_CURVE;
+
+    // スムージング（急激な速度変化を抑制）
+    basePowerFiltered = 0.8 * basePowerFiltered + 0.2 * targetBase;
+    basePower = basePowerFiltered;
+
+    // デバッグしたい場合は有効化
+    // Serial.print(" base:"); Serial.print((int)basePower);
+    // Serial.print(" p:"); Serial.print(p);
+    // Serial.print(" d:"); Serial.print(d);
+    // Serial.print(" zigzag:"); Serial.print(isZigzag);
+    // Serial.print(" straight:"); Serial.println(isStraight);
+}
+
+void readSensor()
+{
+    long rawL = analogRead(SENSOR_L);
+    long rawC = analogRead(SENSOR_C);
+    long rawR = analogRead(SENSOR_R);
+
+    printSensorLog(rawL, rawC, rawR);
+
+    updatePID(calcError(rawL, rawC, rawR));
+
+    // 追加: PID更新後に速度プロファイル更新
+    updateSpeedProfile(rawL, rawC, rawR);
 }
 
 void updatePID(double error)
@@ -134,17 +214,6 @@ void printSensorLog(long rawL, long rawC, long rawR)
 
         lastPrintTime = currentTime;
     }
-}
-
-void readSensor()
-{
-    long rawL = analogRead(SENSOR_L);
-    long rawC = analogRead(SENSOR_C);
-    long rawR = analogRead(SENSOR_R);
-
-    printSensorLog(rawL, rawC, rawR);
-
-    updatePID(calcError(rawL, rawC, rawR));
 }
 
 void setMotor(long speedL, long speedR)
