@@ -168,7 +168,8 @@ void resetPID()
     d = 0;
     prevError = 0;
 }
-int turnStartTime = 0;
+long turnStartTime = 0;
+int isTurned=0;
 void loop()
 {
     /*0.3秒で約1000回転すると、0.3秒で大体積分項が1000に飽和する
@@ -181,7 +182,7 @@ void loop()
     {
 
         setMotor(calcPowerL(), calcPowerR());
-        if (checkEdge() == 1)
+        if (checkEdge() == 1&&isTurned==0)
         {
             state = 1;
             resetPID();
@@ -203,6 +204,7 @@ void loop()
         if (millis() - turnStartTime > 600)
         {
             state = 2;
+            isTurned=1;
             resetPID();
         }
     }
