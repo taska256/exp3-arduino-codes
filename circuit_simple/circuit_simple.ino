@@ -13,6 +13,7 @@ const int MOTOR_R_DIR2 = 5;
 
 void setup()
 {
+    Serial.begin(9600);
     pinMode(MOTOR_L_PWM, OUTPUT);
     pinMode(MOTOR_L_DIR1, OUTPUT);
     pinMode(MOTOR_L_DIR2, OUTPUT);
@@ -20,26 +21,26 @@ void setup()
     pinMode(MOTOR_R_DIR1, OUTPUT);
     pinMode(MOTOR_R_DIR2, OUTPUT);
 }
+const int SENSOR_THRESHOLD = 450;
 // マイナスなら左,プラスなら右に寄っている
-long long p = 0;
+int p = 0;
 long long i = 0;
-long long d = 0;
+int d = 0;
 
-long long rawL = 0;
-long long rawC = 1024;
-long long rawR = 0;
+int rawL = 0;
+int rawC = 1024;
+int rawR = 0;
 
-long long wasRight = 0;
+int wasRight = 0;
+int prevError = 0;
 
-long long prevError = 0;
+const int basePower = 200;
 
-const long long basePower = 120;
+const int Kp = 30;
+const int KiInverse = 80;
+const int Kd = 250;
 
-const long long Kp = 30;
-const long long KiInverse = 1024;
-const long long Kd = 15;
-
-long long calcPowerL()
+int calcPowerL()
 {
     long long calced = Kp * p + i / KiInverse + Kd * d;
     long long power = basePower - calced;
@@ -50,7 +51,7 @@ long long calcPowerL()
     return power;
 }
 
-long long calcPowerR()
+int calcPowerR()
 {
     long long calced = Kp * p + i / KiInverse + Kd * d;
     long long power = basePower + calced;
@@ -67,22 +68,29 @@ void readSensor()
     rawC = analogRead(SENSOR_C);
     rawR = analogRead(SENSOR_R);
 }
+bool resetIntegral = false;
 
-void updatePID(long long error)
+void updatePID(int error)
 {
     p = error;
     i += error;
+    if (resetIntegral)
+    {
+        i = 0;
+        resetIntegral = false;
+    }
     d = (error - prevError);
     prevError = error;
 }
 
-long long calcError()
+int calcError()
 {
     int isLBlack = rawL > SENSOR_THRESHOLD;
     int isCBlack = rawC > SENSOR_THRESHOLD;
     int isRBlack = rawR > SENSOR_THRESHOLD;
+    resetIntegral = isCBlack;
 
-    long long sum = isLBlack + isCBlack + isRBlack;
+    int sum = isLBlack + isCBlack + isRBlack;
     if (sum == 0)
     {
         return wasRight * 3;
@@ -101,7 +109,7 @@ long long calcError()
     return val;
 }
 
-void setMotor(long long speedL, long long speedR)
+void setMotor(int speedL, int speedR)
 {
     digitalWrite(MOTOR_L_DIR1, LOW);
     digitalWrite(MOTOR_L_DIR2, HIGH);
@@ -115,11 +123,25 @@ void setMotor(long long speedL, long long speedR)
 
 void loop()
 {
+    Serial.print("L:");
+    Serial.print(rawL);
+    Serial.print(" C:");
+    Serial.print(rawC);
+    Serial.print(" R:");
+    Serial.print(rawR);
+    Serial.print(" | P:");
+    Serial.print(p);
+    Serial.print(" I:");
+    Serial.print((int)i);
+    Serial.print(" D:");
+    Serial.print(d);
+    Serial.println();
+
     readSensor();
     long long error = calcError();
     updatePID(error);
-    long long speedL = calcPowerL();
-    long long speedR = calcPowerR();
+    int speedL = calcPowerL();
+    int speedR = calcPowerR();
 
     setMotor(speedL, speedR);
 }
