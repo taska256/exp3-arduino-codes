@@ -2,7 +2,8 @@
 // --- ピン定義 ---
 // FC-51 (LOW=障害物, HIGH=なし)
 const int FC51_PIN = 13;
-
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(A0, A1, A2, A3, A4, A5);
 // 超音波 (HC-SR04)
 const int R_TRIG_PIN = 12;
 const int R_ECHO_PIN = 7;
@@ -20,12 +21,15 @@ const int R_VREF = 11;
 
 // --- 制御パラメータ ---
 const float OUT_OF_RANGE_CM = 30.0f; // これより遠いのは「見失い」扱い
-int BASE_SPEED = 0;
 // 0/1化する閾値（これ以下なら「検出=1」）
 const float DETECT_THRESHOLD_CM = 40.0f;
+const int BASE_SPEED_OBSTACLE = 120; // 障害物検知時の基準速度
+const int BASE_SPEED_DIFF0 = 200;
+const int BASE_SPEED_DIFF1 = 220;
+const int BASE_SPEED_DIFF2 = 200;
 
 const float Kp_turn = 60.0f;
-const float Ki_turn = 30.0f; // 要調整
+const float Ki_turn = 20.0f; // 要調整
 const float Kd_turn = 15.0f; // 要調整
 const float I_LIMIT = 5.0f;  // 積分の上限（誤差積分値をクランプ）
 
@@ -87,13 +91,30 @@ void setup()
 
     applyMotors({0, 0});
     lastDiff = 0;
-    BASE_SPEED = 240;
+
+    // LCD初期化
+    lcd.begin(16, 2);
+    lcd.clear();
+    lcd.print("Robot Ready!");
+    delay(1000);
+    lcd.clear();
 }
 void loop()
 {
     const SensorReadings s = readSensors();
     const MotorCommand cmd = computeCommand(s);
     applyMotors(cmd);
+
+    // --- LCD表示処理を追加 ---
+    lcd.setCursor(0, 0);
+    lcd.print("L: ");
+    lcd.print(cmd.right);
+    lcd.print("   "); // 桁数が変わった時のゴミ消し用
+
+    lcd.setCursor(0, 1);
+    lcd.print("R: ");
+    lcd.print(cmd.left);
+    lcd.print("   ");
 }
 
 static SensorReadings readSensors()
@@ -130,13 +151,6 @@ static MotorCommand computeCommand(const SensorReadings &s)
             // 障害物が消えたら以降は停止判定を無効化
             g_obstacleEnabled = false;
         }
-    }
-
-    // 障害物停止が無効になったら以降は通常処理のみ
-    if (s.obstacle && !g_obstacleEnabled)
-    {
-        // 何もしない（停止させない）
-        // 障害物フラグは表示のためそのまま利用
     }
 
     // B) 左右を閾値で 0/1 化（1=検出）
@@ -197,12 +211,28 @@ static MotorCommand computeCommand(const SensorReadings &s)
 
     const long turnAmount = turn;
 
-    // |diff|が大きいほどベーススピードを下げる（diff=0で最大240）
-    const int baseSpeed = clampInt(BASE_SPEED - 20 * abs(diff), 0, BASE_SPEED);
+    // 障害物検知時は180、それ以外はdiffに応じた基準速度
+    int baseSpeed = BASE_SPEED_DIFF0;
+    if (s.obstacle)
+    {
+        baseSpeed = BASE_SPEED_OBSTACLE;
+    }
+    else
+    {
+        const int adiff = abs(diff);
+        if (adiff == 1)
+        {
+            baseSpeed = BASE_SPEED_DIFF1;
+        }
+        else if (adiff == 2)
+        {
+            baseSpeed = BASE_SPEED_DIFF2;
+        }
+    }
 
     MotorCommand cmd;
-    cmd.left = clampInt(baseSpeed - turnAmount, 0, 255);
-    cmd.right = clampInt(baseSpeed + turnAmount, 0, 255);
+    cmd.left = clampInt(baseSpeed - turnAmount, 75, 255);
+    cmd.right = clampInt(baseSpeed + turnAmount, 75, 255);
 
     debugPrint(s, cmd, diff, lost);
     return cmd;
