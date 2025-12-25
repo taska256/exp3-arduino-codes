@@ -24,7 +24,7 @@ int BASE_SPEED = 0;
 // 0/1化する閾値（これ以下なら「検出=1」）
 const float DETECT_THRESHOLD_CM = 40.0f;
 
-const float Kp_turn = 90.0f;
+const float Kp_turn = 60.0f;
 const float Ki_turn = 30.0f; // 要調整
 const float Kd_turn = 15.0f; // 要調整
 const float I_LIMIT = 5.0f;  // 積分の上限（誤差積分値をクランプ）
@@ -197,9 +197,12 @@ static MotorCommand computeCommand(const SensorReadings &s)
 
     const long turnAmount = turn;
 
+    // |diff|が大きいほどベーススピードを下げる（diff=0で最大240）
+    const int baseSpeed = clampInt(BASE_SPEED - 20 * abs(diff), 0, BASE_SPEED);
+
     MotorCommand cmd;
-    cmd.left = clampInt(BASE_SPEED - turnAmount, 100, 255);
-    cmd.right = clampInt(BASE_SPEED + turnAmount, 100, 255);
+    cmd.left = clampInt(baseSpeed - turnAmount, 0, 255);
+    cmd.right = clampInt(baseSpeed + turnAmount, 0, 255);
 
     debugPrint(s, cmd, diff, lost);
     return cmd;
