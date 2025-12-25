@@ -37,7 +37,7 @@ int prevError = 0;
 const int basePower = 200;
 
 const int Kp = 30;
-const int KiInverse = 80;
+const int KiInverse = 40;
 const int Kd = 250;
 
 int calcPowerL()

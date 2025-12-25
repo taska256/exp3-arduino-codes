@@ -215,6 +215,8 @@ double calcError(double rawL, double rawC, double rawR)
 
     // 白の時低くなる / 黒の時高くなる前提
     double val = -((1024 - rawL) - (1024 - rawR)) * (2.0 - rawC / 1024.0) / 1024.0;
+    // double val=-(-rawL+rawR)*(2.0-rawC/1024.0)/1024.0;
+    // val=(rawL-rawR)/1024.0;*(2.0-rawC/1024.0)
     if (val < 0)
     {
         isLeftNow = -1;
