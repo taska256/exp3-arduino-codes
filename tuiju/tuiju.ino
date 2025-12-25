@@ -20,22 +20,18 @@ const int R_VREF = 11;
 
 // --- 制御パラメータ ---
 const float OUT_OF_RANGE_CM = 30.0f; // これより遠いのは「見失い」扱い
-const int BASE_SPEED = 255;
+int BASE_SPEED = 0;
 // 0/1化する閾値（これ以下なら「検出=1」）
-const float DETECT_THRESHOLD_CM = 25.0f;
+const float DETECT_THRESHOLD_CM = 40.0f;
 
 const float Kp_turn = 60.0f;
-const float Ki_turn = 20.0f;                    // 要調整
-const float Kd_turn = 15.0f;                    // 要調整
-const float I_LIMIT = 5.0f;                    // 積分の上限（誤差積分値をクランプ）
-const int BOOST_EXTRA = 40;                     // 障害物解除直後に加算する速度
-const unsigned long BOOST_DURATION_MS = 1000UL; // ブースト継続時間
+const float Ki_turn = 20.0f; // 要調整
+const float Kd_turn = 15.0f; // 要調整
+const float I_LIMIT = 5.0f;  // 積分の上限（誤差積分値をクランプ）
 
 float g_iTerm = 0.0f;
 float g_prevError = 0.0f;
 unsigned long g_prevMs = 0;
-bool g_prevObstacle = false;
-unsigned long g_boostUntilMs = 0;
 
 // 追加: デバッグ出力用（PIDの各寄与）
 float g_pOut = 0.0f; // P = Kp * error
@@ -90,6 +86,7 @@ void setup()
 
     applyMotors({0, 0});
     lastDiff = 0;
+    BASE_SPEED = 255;
 }
 void loop()
 {
@@ -120,20 +117,11 @@ static MotorCommand computeCommand(const SensorReadings &s)
         g_iTerm = 0.0f;
         g_prevError = 0.0f;
         g_prevMs = nowMs;
-        g_prevObstacle = true;
-        g_boostUntilMs = 0;
 
         const MotorCommand cmd{0, 0};
         debugPrint(s, cmd, 0, false);
         return cmd;
     }
-
-    // 障害物が解除された瞬間から一定時間ベーススピードを上げる
-    if (g_prevObstacle && !s.obstacle)
-    {
-        g_boostUntilMs = nowMs + BOOST_DURATION_MS;
-    }
-    g_prevObstacle = s.obstacle;
 
     // B) 左右を閾値で 0/1 化（1=検出）
     const int L = (s.leftCm <= DETECT_THRESHOLD_CM) ? 1 : 0;
@@ -193,22 +181,9 @@ static MotorCommand computeCommand(const SensorReadings &s)
 
     const long turnAmount = turn;
 
-    int baseSpeed = BASE_SPEED;
-    if (g_boostUntilMs != 0)
-    {
-        if ((long)(g_boostUntilMs - nowMs) > 0)
-        {
-            baseSpeed = clampInt(BASE_SPEED + BOOST_EXTRA, 0, 255);
-        }
-        else
-        {
-            g_boostUntilMs = 0;
-        }
-    }
-
     MotorCommand cmd;
-    cmd.left = clampInt(baseSpeed - turnAmount, 0, 255);
-    cmd.right = clampInt(baseSpeed + turnAmount, 0, 255);
+    cmd.left = clampInt(BASE_SPEED - turnAmount, 50, 255);
+    cmd.right = clampInt(BASE_SPEED + turnAmount, 50, 255);
 
     debugPrint(s, cmd, diff, lost);
     return cmd;

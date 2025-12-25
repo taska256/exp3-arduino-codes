@@ -34,7 +34,7 @@ int rawR = 0;
 int wasRight = 0;
 int prevError = 0;
 
-const int basePower = 200;
+const int basePower = 170;
 
 const int Kp = 30;
 const int KiInverse = 40;
@@ -123,6 +123,13 @@ void setMotor(int speedL, int speedR)
 
 void loop()
 {
+    if (millis() < 1000)
+    {
+        // Fixed output for the first second of operation
+        setMotor(140, 140);
+        return;
+    }
+
     Serial.print("L:");
     Serial.print(rawL);
     Serial.print(" C:");
