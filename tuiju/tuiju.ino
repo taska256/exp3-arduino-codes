@@ -20,15 +20,15 @@ const int R_VREF = 11;
 
 // --- 制御パラメータ ---
 const float OUT_OF_RANGE_CM = 30.0f; // これより遠いのは「見失い」扱い
-const int BASE_SPEED = 160;
+const int BASE_SPEED = 255;
 // 0/1化する閾値（これ以下なら「検出=1」）
 const float DETECT_THRESHOLD_CM = 25.0f;
 
-const float Kp_turn = 40.0f;
-const float Ki_turn = 8.0f;  // 要調整
-const float Kd_turn = 15.0f; // 要調整
-const float I_LIMIT = 10.0f; // 積分の上限（誤差積分値をクランプ）
-const int BOOST_EXTRA = 40;                 // 障害物解除直後に加算する速度
+const float Kp_turn = 60.0f;
+const float Ki_turn = 20.0f;                    // 要調整
+const float Kd_turn = 15.0f;                    // 要調整
+const float I_LIMIT = 5.0f;                    // 積分の上限（誤差積分値をクランプ）
+const int BOOST_EXTRA = 40;                     // 障害物解除直後に加算する速度
 const unsigned long BOOST_DURATION_MS = 1000UL; // ブースト継続時間
 
 float g_iTerm = 0.0f;
@@ -89,6 +89,7 @@ void setup()
     pinMode(R_VREF, OUTPUT);
 
     applyMotors({0, 0});
+    lastDiff = 0;
 }
 void loop()
 {
@@ -146,11 +147,15 @@ static MotorCommand computeCommand(const SensorReadings &s)
     }
     else if (L == 0 && R == 1)
     {
-        diff = +1;
+        diff = 1;
     }
     else
     {
         diff = 0;
+    }
+    if (L == 1 && R == 1)
+    {
+        g_iTerm = 0.0f; // 両方見えたら積分リセット
     }
 
     // D) 両方見えないなら、前回の方向へ探索
@@ -289,7 +294,7 @@ static void debugPrint(const SensorReadings &s, const MotorCommand &cmd, int dif
     Serial.print(g_dOut, 2);
 
     Serial.print(" | L_sp: ");
-    Serial.print(cmd.left);
+    Serial.print(cmd.right);
     Serial.print(", R_sp: ");
-    Serial.println(cmd.right);
+    Serial.println(cmd.left);
 }
