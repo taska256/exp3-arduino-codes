@@ -24,14 +24,15 @@ int BASE_SPEED = 0;
 // 0/1化する閾値（これ以下なら「検出=1」）
 const float DETECT_THRESHOLD_CM = 40.0f;
 
-const float Kp_turn = 60.0f;
-const float Ki_turn = 20.0f; // 要調整
+const float Kp_turn = 90.0f;
+const float Ki_turn = 30.0f; // 要調整
 const float Kd_turn = 15.0f; // 要調整
 const float I_LIMIT = 5.0f;  // 積分の上限（誤差積分値をクランプ）
 
 float g_iTerm = 0.0f;
 float g_prevError = 0.0f;
 unsigned long g_prevMs = 0;
+bool g_obstacleEnabled = true; // 障害物停止を有効にする期間（解除後は無効化）
 
 // 追加: デバッグ出力用（PIDの各寄与）
 float g_pOut = 0.0f; // P = Kp * error
@@ -86,7 +87,7 @@ void setup()
 
     applyMotors({0, 0});
     lastDiff = 0;
-    BASE_SPEED = 255;
+    BASE_SPEED = 240;
 }
 void loop()
 {
@@ -110,17 +111,32 @@ static MotorCommand computeCommand(const SensorReadings &s)
 {
     const unsigned long nowMs = millis();
 
-    // A) 最優先停止（FC-51）
-    if (s.obstacle)
+    // A) 最優先停止（FC-51）: 初回障害物がなくなったら以後は停止させない
+    if (g_obstacleEnabled)
     {
-        // 停止時はPID状態をリセット
-        g_iTerm = 0.0f;
-        g_prevError = 0.0f;
-        g_prevMs = nowMs;
+        if (s.obstacle)
+        {
+            // 停止時はPID状態をリセット
+            g_iTerm = 0.0f;
+            g_prevError = 0.0f;
+            g_prevMs = nowMs;
 
-        const MotorCommand cmd{0, 0};
-        debugPrint(s, cmd, 0, false);
-        return cmd;
+            const MotorCommand cmd{0, 0};
+            debugPrint(s, cmd, 0, false);
+            return cmd;
+        }
+        else
+        {
+            // 障害物が消えたら以降は停止判定を無効化
+            g_obstacleEnabled = false;
+        }
+    }
+
+    // 障害物停止が無効になったら以降は通常処理のみ
+    if (s.obstacle && !g_obstacleEnabled)
+    {
+        // 何もしない（停止させない）
+        // 障害物フラグは表示のためそのまま利用
     }
 
     // B) 左右を閾値で 0/1 化（1=検出）
@@ -182,8 +198,8 @@ static MotorCommand computeCommand(const SensorReadings &s)
     const long turnAmount = turn;
 
     MotorCommand cmd;
-    cmd.left = clampInt(BASE_SPEED - turnAmount, 50, 255);
-    cmd.right = clampInt(BASE_SPEED + turnAmount, 50, 255);
+    cmd.left = clampInt(BASE_SPEED - turnAmount, 100, 255);
+    cmd.right = clampInt(BASE_SPEED + turnAmount, 100, 255);
 
     debugPrint(s, cmd, diff, lost);
     return cmd;
